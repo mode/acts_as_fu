@@ -59,22 +59,29 @@ module ActsAsFu
     ActsAsFu::Connection.connected
   end
 
+  module Something
+    def method_missing(sym, *args, &block)
+      ActsAsFu::Connection.connection.change_table(table_name) do |t|
+        t.send(sym, *args)
+      end
+      super(sym, *args, &block)
+    end
+  end
+
   def model_eval(klass, &block)
     class << klass
-      def method_missing_with_columns(sym, *args, &block)
-        ActsAsFu::Connection.connection.change_table(table_name) do |t|
-          t.send(sym, *args)
-        end
-      end
+      prepend Something
 
-      alias_method_chain :method_missing, :columns
+      def method_missing(sym, *args, &block)
+        
+      end
     end
 
     klass.class_eval(&block) if block_given?
 
     class << klass
       remove_method :method_missing
-      alias_method :method_missing, :method_missing_without_columns
+      #alias_method :method_missing, :method_missing_without_columns
     end
   end
 
